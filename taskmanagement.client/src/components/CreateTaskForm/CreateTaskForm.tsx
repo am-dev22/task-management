@@ -1,0 +1,70 @@
+import React, { useState } from "react";
+import { User } from "../../types";
+import "./CreateTaskForm.css";
+
+interface CreateTaskFormProps {
+    users: User[];
+    onCreateTask: (title: string, type: string, assigneeId: number) => Promise<void>;
+    setError: (error: string | null) => void;
+}
+
+export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
+    users,
+    onCreateTask,
+    setError,
+}) => {
+    const [title, setTitle] = useState("");
+    const [type, setType] = useState("procurement");
+    const [assigneeId, setAssigneeId] = useState<number | "">("");
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!title || !assigneeId) {
+            setError("Please fill in all fields to create a task.");
+            return;
+        }
+
+        await onCreateTask(title, type, Number(assigneeId));
+        setTitle("");
+    };
+
+    return (
+        <section className="create-task-container">
+            <h3 className="create-task-title">2. Create a New Task</h3>
+            <form onSubmit={handleSubmit} className="create-task-form">
+                <input
+                    type="text"
+                    placeholder="Task Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="create-task-input"
+                />
+                <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="create-task-select"
+                >
+                    <option value="procurement">Procurement</option>
+                    <option value="development">Development</option>
+                </select>
+                <select
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(Number(e.target.value))}
+                    className="create-task-select"
+                >
+                    <option value="">Assign To...</option>
+                    {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                            {u.name}
+                        </option>
+                    ))}
+                </select>
+                <button type="submit" className="create-task-button">
+                    Create
+                </button>
+            </form>
+        </section>
+    );
+};

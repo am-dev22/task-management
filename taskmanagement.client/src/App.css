@@ -1,0 +1,62 @@
+.app-wrapper {
+    padding: 40px 20px;
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    color: #2c3e50;
+    background-color: #ffffff;
+    min-height: 100vh;
+}
+
+.app-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f0f3f6;
+}
+
+.app-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: #1a252f;
+}
+
+.app-subtitle {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 1.1rem;
+}
+
+.error-banner {
+    padding: 15px 20px;
+    background-color: #fdf2f2;
+    color: #ec5c5c;
+    border-left: 5px solid #ec5c5c;
+    margin-bottom: 30px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    font-weight: 500;
+}
+
+.task-section-title {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    border-bottom: 2px solid #eaeaea;
+    padding-bottom: 10px;
+}
+
+.highlight-username {
+    color: #3498db;
+}
+
+.empty-tasks-placeholder {
+    text-align: center;
+    padding: 40px;
+    background-color: #fafafa;
+    border-radius: 10px;
+    color: #95a5a6;
+    border: 1px dashed #dcdde1;
+}

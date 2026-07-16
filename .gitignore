@@ -1,0 +1,57 @@
+node_modules/
+__pycache__/
+.env
+.env.local
+*.pyc
+dist/
+build/
+.DS_Store
+Thumbs.db
+appsettings.json
+
+
+# =====================
+# Visual Studio / IDE
+# =====================
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vcxproj.user
+
+# =====================
+# Build outputs
+# =====================
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# =====================
+# Executables / binaries
+# =====================
+*.dll
+*.exe
+*.pdb
+*.dll.config
+
+# =====================
+# Config / build artifacts (careful!)
+# =====================
+*.config
+*.vsidx
+
+# =====================
+# Logs / temp
+# =====================
+*.log
+*.tmp
+*.cache
+
+# =====================
+# NuGet
+# =====================
+*.nupkg
+packages/
