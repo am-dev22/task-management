@@ -46,6 +46,8 @@
     <Folder Include="src\entities\" />
     <Folder Include="src\controllers\" />
     <Folder Include="src\database\" />
+    <Folder Include="src\errors\" />
+    <Folder Include="src\middleware\" />
     <Folder Include="src\routes\" />
     <Folder Include="src\services\" />
     <Folder Include="src\strategies\" />
@@ -67,7 +69,13 @@
     <TypeScriptCompile Include="src\entities\User.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="src\errors\AppError.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="src\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\middleware\errorHandler.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\routes\task.routes.ts">

@@ -2,6 +2,7 @@ import { AppDataSource } from "../data-source";
 import { Task } from "../entities/Task";
 import { User } from "../entities/User";
 import { strategyRegistry } from "../strategies/StrategyRegistry";
+import { NotFoundError, BadRequestError } from "../errors/AppError";
 
 export class TaskService {
     private taskRepository = AppDataSource.getRepository(Task);
@@ -86,11 +87,11 @@ export class TaskService {
         const task = await this.taskRepository.findOne({ where: { id: taskId } });
 
         if (!task) {
-            throw new Error("Task not found.");
+            throw new NotFoundError("Task not found");
         }
 
         if (task.isClosed) {
-            throw new Error("Task is already closed.");
+            throw new BadRequestError("Cannot modify a closed task.");
         }
 
         const strategy = strategyRegistry.get(task.type);
