@@ -1,10 +1,55 @@
-// This file allows you to configure ESLint according to your project's needs, so that you
-// can control the strictness of the linter, the plugins to use, and more.
+.create-task-container {
+    margin-bottom: 35px;
+    padding: 20px;
+    border: 1px solid #e1e8ed;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
 
-// For more information about configuring ESLint, visit https://eslint.org/docs/user-guide/configuring/
+.create-task-title {
+    margin: 0 0 15px 0;
+    color: #34495e;
+    font-size: 1.1rem;
+}
 
-module.exports = [
-    {
-        rules: {}
+.create-task-form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.create-task-input {
+    padding: 10px 15px;
+    flex: 1;
+    min-width: 200px;
+    border-radius: 6px;
+    border: 1px solid #dcdde1;
+    font-size: 1rem;
+    outline: none;
+}
+
+.create-task-select {
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid #dcdde1;
+    background-color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    outline: none;
+}
+
+.create-task-button {
+    padding: 10px 24px;
+    background-color: #3498db;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1rem;
+}
+
+    .create-task-button:hover {
+        background-color: #2980b9;
     }
-];

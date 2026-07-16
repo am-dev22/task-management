@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { User, Task, TransitionState } from "../../types";
+import type  { User, Task, TransitionState } from "../../types";
 import "./TaskItem.css";
 
 interface TaskItemProps {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User } from "../../types";
+import type { User } from "../../types";
 import "./CreateTaskForm.css";
 
 interface CreateTaskFormProps {
@@ -17,7 +17,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     const [type, setType] = useState("procurement");
     const [assigneeId, setAssigneeId] = useState<number | "">("");
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
         setError(null);
 

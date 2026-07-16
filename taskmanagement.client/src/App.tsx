@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { User, Task, TransitionState } from "./types";
+import type { User, Task, TransitionState } from "./types";
 import { UserSwitcher } from "./components/UserSwitcher/UserSwitcher";
 import { CreateTaskForm } from "./components/CreateTaskForm/CreateTaskForm";
 import { TaskItem } from "./components/TaskItem/TaskItem";
