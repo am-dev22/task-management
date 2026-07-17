@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { User } from "../../types";
+import { type User, TASK_TYPE_CONFIGS } from "../../types";
 import "./CreateTaskForm.css";
 
 interface CreateTaskFormProps {
@@ -8,26 +8,35 @@ interface CreateTaskFormProps {
     setError: (error: string | null) => void;
 }
 
-export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
+export function CreateTaskForm({
     users,
     onCreateTask,
     setError,
-}) => {
+}: CreateTaskFormProps) {
     const [title, setTitle] = useState("");
     const [type, setType] = useState("procurement");
     const [assigneeId, setAssigneeId] = useState<number | "">("");
 
+    // Switched to React.SyntheticEvent to eliminate deprecation warnings
     const handleSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
         setError(null);
 
-        if (!title || !assigneeId) {
+        if (!title.trim() || assigneeId === "") {
             setError("Please fill in all fields to create a task.");
             return;
         }
 
-        await onCreateTask(title, type, Number(assigneeId));
-        setTitle("");
+        try {
+            await onCreateTask(title.trim(), type, assigneeId);
+
+            // Clean slate reset
+            setTitle("");
+            setType("procurement");
+            setAssigneeId("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create task.");
+        }
     };
 
     return (
@@ -41,17 +50,25 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                     onChange={(e) => setTitle(e.target.value)}
                     className="create-task-input"
                 />
+
                 <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                     className="create-task-select"
                 >
-                    <option value="procurement">Procurement</option>
-                    <option value="development">Development</option>
+                    {Object.entries(TASK_TYPE_CONFIGS).map(([key, config]) => (
+                        <option key={key} value={key}>
+                            {config.label}
+                        </option>
+                    ))}
                 </select>
+
                 <select
                     value={assigneeId}
-                    onChange={(e) => setAssigneeId(Number(e.target.value))}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setAssigneeId(val === "" ? "" : Number(val));
+                    }}
                     className="create-task-select"
                 >
                     <option value="">Assign To...</option>
@@ -61,10 +78,11 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                         </option>
                     ))}
                 </select>
+
                 <button type="submit" className="create-task-button">
                     Create
                 </button>
             </form>
         </section>
     );
-};
+}

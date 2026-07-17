@@ -1,5 +1,4 @@
-﻿import React from "react";
-import type  { User, Task, TransitionState } from "../../types";
+﻿import { type User, type Task, type TransitionState, TASK_TYPE_CONFIGS } from "../../types";
 import "./TaskItem.css";
 
 interface TaskItemProps {
@@ -11,29 +10,26 @@ interface TaskItemProps {
     onTransitionStateChange: (taskId: number, key: "nextUser" | "inputField", value: string | number) => void;
 }
 
-export const TaskItem: React.FC<TaskItemProps> = ({
+export function TaskItem({
     task,
     users,
     transitionData,
     onStatusChange,
     onCloseTask,
     onTransitionStateChange,
-}) => {
+}: TaskItemProps) {
+    const config = TASK_TYPE_CONFIGS[task.type.toLowerCase()];
+
+    // Safety fallback to prevent app crashes if an undefined task type is passed
+    const label = config?.label ?? task.type;
+    const maxStatusForType = config?.maxStatus ?? 4;
+
     const nextStatus = task.status + 1;
     const prevStatus = task.status - 1;
-    const maxStatusForType = task.type === "procurement" ? 3 : 4;
 
-    const inputPlaceholder = (() => {
-        if (task.type === "procurement") {
-            if (nextStatus === 2) return "Enter 2 price quotes separated by a comma (e.g., $100, $120)";
-            if (nextStatus === 3) return "Enter receipt text";
-        } else if (task.type === "development") {
-            if (nextStatus === 2) return "Enter specification text";
-            if (nextStatus === 3) return "Enter branch name";
-            if (nextStatus === 4) return "Enter version number";
-        }
-        return "";
-    })();
+    // Dynamically retrieve placeholder configuration for the upcoming status change
+    const activeStepConfig = config?.steps[nextStatus];
+    const inputPlaceholder = activeStepConfig?.placeholder || "";
 
     const renderCustomData = (customData: Record<string, unknown>) => {
         const keys = Object.keys(customData);
@@ -45,11 +41,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             <div className="custom-data-list">
                 {keys.map((key) => {
                     const val = customData[key];
-                    const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+                    const formattedLabel = key
+                        .replace(/([A-Z])/g, " $1")
+                        .trim()
+                        .replace(/^./, (str) => str.toUpperCase());
 
                     return (
                         <div key={key} className="custom-data-item">
-                            <strong className="custom-data-label">{label}:</strong>{" "}
+                            <strong className="custom-data-label">{formattedLabel}:</strong>{" "}
                             <span className="custom-data-value">
                                 {Array.isArray(val) ? val.join(", ") : String(val)}
                             </span>
@@ -60,10 +59,30 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         );
     };
 
-    const handleForwardTransition = () => {
-        const nextUser = transitionData?.nextUser || task.assignedUser.id;
+    const handleForwardTransition = async () => {
         const inputVal = transitionData?.inputField || "";
-        void onStatusChange(task, nextStatus, inputVal, nextUser);
+
+        // If it's procurement, ensure the input follows the strict rule: "quote1,quote2"
+        if (task.type === "procurement" && nextStatus === 2) {
+            const parts = inputVal.split(",").map(p => p.trim());
+            if (parts.length !== 2 || parts.some(p => p === "")) {
+                alert("For procurement, please enter exactly 2 price quotes separated by a comma (e.g., 100,200).");
+                return;
+            }
+        }
+
+        // Pass the raw string to the server. 
+        // Do NOT transform it into an array of numbers, as the strategy expects strings.
+        onStatusChange(task, nextStatus, inputVal, transitionData?.nextUser ?? task.assignedUser.id)
+            .catch(err => console.error("Update failed:", err));
+    };
+
+    const handleBackwardTransition = () => {
+        onStatusChange(task, prevStatus, "", task.assignedUser.id).catch(console.error);
+    };
+
+    const handleCloseTask = () => {
+        onCloseTask(task.id).catch(console.error);
     };
 
     return (
@@ -71,7 +90,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             <div className="task-item-header">
                 <strong className="task-item-title">{task.title}</strong>
                 <span className={`task-badge ${task.isClosed ? "badge-closed" : "badge-open"}`}>
-                    {task.type} (Status {task.status}/{maxStatusForType}) {task.isClosed && "• CLOSED"}
+                    {label} (Status {task.status}/{maxStatusForType}){task.isClosed && " • CLOSED"}
                 </span>
             </div>
 
@@ -90,7 +109,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                         {/* Backward Transition */}
                         {prevStatus >= 1 && (
                             <button
-                                onClick={() => void onStatusChange(task, prevStatus, "", task.assignedUser.id)}
+                                onClick={handleBackwardTransition}
                                 className="back-transition-button"
                             >
                                 ← Back to Status {prevStatus}
@@ -111,7 +130,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                                 )}
 
                                 <select
-                                    value={transitionData?.nextUser || task.assignedUser.id}
+                                    value={transitionData?.nextUser ?? task.assignedUser.id}
                                     onChange={(e) => onTransitionStateChange(task.id, "nextUser", Number(e.target.value))}
                                     className="transition-select"
                                 >
@@ -131,7 +150,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                         {/* Close Task Trigger */}
                         {task.status === maxStatusForType && (
                             <button
-                                onClick={() => void onCloseTask(task.id)}
+                                onClick={handleCloseTask}
                                 className="close-task-button"
                             >
                                 🔒 Close Task
@@ -142,4 +161,4 @@ export const TaskItem: React.FC<TaskItemProps> = ({
             )}
         </div>
     );
-};
+}

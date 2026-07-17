@@ -1,25 +1,35 @@
 .user-switcher-container {
-    margin-bottom: 25px;
-    padding: 20px;
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
 }
 
 .user-switcher-title {
-    margin: 0 0 15px 0;
-    color: #34495e;
-    font-size: 1.1rem;
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .user-switcher-select {
-    padding: 10px 15px;
     width: 100%;
-    max-width: 350px;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
-    border: 1px solid #dcdde1;
-    background-color: #fff;
-    font-size: 1rem;
+    background-color: #ffffff;
+    color: #1e293b;
+    font-size: 0.875rem;
+    font-weight: 500;
     outline: none;
-    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+
+    .user-switcher-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }

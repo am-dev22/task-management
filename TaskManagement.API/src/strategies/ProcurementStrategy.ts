@@ -15,15 +15,25 @@ export class ProcurementStrategy implements ITaskStrategy {
 
     validateStatusTransition(targetStatus: number, customData: Record<string, any>): void {
         if (targetStatus === 2) {
-            // Must contain two quote strings
-            const quotes = customData?.priceQuotes;
-            if (!Array.isArray(quotes) || quotes.length < 2 || typeof quotes[0] !== "string" || typeof quotes[1] !== "string") {
+            // 1. Force the data to be an array if it isn't already
+            let quotes = customData?.priceQuotes;
+            if (!Array.isArray(quotes)) {
+                throw new Error("Procurement status 2 requires an array of price-quotes.");
+            }
+
+            // 2. FORCE CONVERSION: Convert every element to a string explicitly
+            const stringQuotes = quotes.map(q => String(q));
+
+            // 3. Now validate the length and type
+            if (stringQuotes.length < 2 || stringQuotes[0].trim() === "" || stringQuotes[1].trim() === "") {
                 throw new Error("Procurement status 2 requires 2 price-quote strings.");
             }
+
+            // Update the reference so the rest of the application uses the string versions
+            customData.priceQuotes = stringQuotes;
         }
 
         if (targetStatus === 3) {
-            // Must contain a receipt string
             if (typeof customData?.receipt !== "string" || !customData.receipt.trim()) {
                 throw new Error("Procurement status 3 requires a receipt string.");
             }

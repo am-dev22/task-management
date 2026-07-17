@@ -62,12 +62,15 @@ export class TaskService {
 
         const strategy = strategyRegistry.get(task.type);
 
+        console.log("DEBUG_SERVICE: Strategy receiving:", JSON.stringify(customData));
+
         if (targetStatus > strategy.maxStatus) {
             throw new Error(`Status ${targetStatus} exceeds the maximum allowed status for this task type.`);
         }
 
         const updatedCustomData = { ...task.customData, ...customData };
         if (isForward) {
+            console.log("DEBUG: Data passed to Strategy:", JSON.stringify(customData, null, 2));
             strategy.validateStatusTransition(targetStatus, updatedCustomData);
         }
 
