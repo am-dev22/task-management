@@ -1,16 +1,20 @@
 import { Router } from "express";
 import { TaskController } from "../controllers/task.controller";
+import { asyncHandler } from "../middleware/error-handler";
 
 const router = Router();
 const taskController = new TaskController();
 
-// Maps to: POST /api/tasks
-router.post("/", taskController.createTask);
+// GET  /api/tasks/types  -> task-type metadata used by the client's dynamic forms
+router.get("/types", asyncHandler(taskController.getTaskTypes));
 
-// Maps to: PUT /api/tasks/:id/status
-router.put("/:id/status", taskController.updateStatus);
+// POST /api/tasks        -> create a task
+router.post("/", asyncHandler(taskController.createTask));
 
-// Maps to: PUT /api/tasks/:id/close
-router.put("/:id/close", taskController.closeTask);
+// PUT  /api/tasks/:id/status -> advance/reverse a task's status
+router.put("/:id/status", asyncHandler(taskController.updateStatus));
+
+// PUT  /api/tasks/:id/close  -> close a task at its final status
+router.put("/:id/close", asyncHandler(taskController.closeTask));
 
 export default router;

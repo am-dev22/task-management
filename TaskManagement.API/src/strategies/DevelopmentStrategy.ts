@@ -1,36 +1,25 @@
-import { ITaskStrategy } from "./ITaskStrategy";
+import { BaseTaskStrategy } from "./BaseTaskStrategy";
+import { StatusDefinition } from "./ITaskStrategy";
 
-export class DevelopmentStrategy implements ITaskStrategy {
+export class DevelopmentStrategy extends BaseTaskStrategy {
     readonly taskType = "development";
-    readonly maxStatus = 4;
 
-    getStatusName(status: number): string {
-        switch (status) {
-            case 1: return "Created";
-            case 2: return "Specification completed";
-            case 3: return "Development completed";
-            case 4: return "Distribution completed";
-            default: return "Unknown";
-        }
-    }
-
-    validateStatusTransition(targetStatus: number, customData: Record<string, any>): void {
-        if (targetStatus === 2) {
-            if (typeof customData?.specification !== "string" || !customData.specification.trim()) {
-                throw new Error("Development status 2 requires specification text.");
-            }
-        }
-
-        if (targetStatus === 3) {
-            if (typeof customData?.branchName !== "string" || !customData.branchName.trim()) {
-                throw new Error("Development status 3 requires a branch name.");
-            }
-        }
-
-        if (targetStatus === 4) {
-            if (typeof customData?.versionNumber !== "string" || !customData.versionNumber.trim()) {
-                throw new Error("Development status 4 requires a version number.");
-            }
-        }
-    }
+    readonly statuses: StatusDefinition[] = [
+        { status: 1, name: "Created", requiredFields: [] },
+        {
+            status: 2,
+            name: "Specification completed",
+            requiredFields: [{ key: "specification", label: "specification text", type: "text" }],
+        },
+        {
+            status: 3,
+            name: "Development completed",
+            requiredFields: [{ key: "branchName", label: "a branch name", type: "text" }],
+        },
+        {
+            status: 4,
+            name: "Distribution completed",
+            requiredFields: [{ key: "versionNumber", label: "a version number", type: "text" }],
+        },
+    ];
 }

@@ -1,26 +1,34 @@
 import { AppDataSource } from "../data-source";
 import { Task } from "../entities/Task";
 import { User } from "../entities/User";
+import { ConflictError, NotFoundError, ValidationError } from "../errors";
 import { strategyRegistry } from "../strategies/StrategyRegistry";
-import { NotFoundError, BadRequestError } from "../errors/AppError";
 
 export class TaskService {
-    private taskRepository = AppDataSource.getRepository(Task);
-    private userRepository = AppDataSource.getRepository(User);
+    // Resolved lazily so the repositories are only requested after the data
+    // source has been initialised.
+    private get taskRepository() {
+        return AppDataSource.getRepository(Task);
+    }
+
+    private get userRepository() {
+        return AppDataSource.getRepository(User);
+    }
 
     async getTasksByUserId(userId: number): Promise<Task[]> {
-        return await this.taskRepository.find({
+        return this.taskRepository.find({
             where: { assignedUser: { id: userId } },
+            order: { id: "ASC" },
         });
     }
 
     async createTask(title: string, type: string, assignedUserId: number): Promise<Task> {
-        // Verify Strategy exists for this type
+        // Throws ValidationError if no strategy is registered for this type.
         strategyRegistry.get(type);
 
         const user = await this.userRepository.findOneBy({ id: assignedUserId });
         if (!user) {
-            throw new Error("Assigned user not found.");
+            throw new NotFoundError("Assigned user not found.");
         }
 
         const newTask = this.taskRepository.create({
@@ -32,78 +40,91 @@ export class TaskService {
             assignedUser: user,
         });
 
-        return await this.taskRepository.save(newTask);
+        return this.taskRepository.save(newTask);
     }
 
-    async updateTaskStatus(taskId: number, targetStatus: number, customData: any, nextAssignedUserId: number): Promise<Task> {
+    async updateTaskStatus(
+        taskId: number,
+        targetStatus: number,
+        customData: Record<string, unknown>,
+        nextAssignedUserId: number
+    ): Promise<Task> {
+        if (!Number.isInteger(targetStatus)) {
+            throw new ValidationError("targetStatus must be an integer.");
+        }
+
         const task = await this.taskRepository.findOne({
             where: { id: taskId },
             relations: { assignedUser: true },
         });
 
         if (!task) {
-            throw new Error("Task not found.");
+            throw new NotFoundError("Task not found.");
         }
 
         if (task.isClosed) {
-            throw new Error("Cannot modify closed tasks.");
-        }
-
-        const currentStatus = task.status;
-        const isForward = targetStatus > currentStatus;
-
-        if (isForward && targetStatus !== currentStatus + 1) {
-            throw new Error("Forward transitions must be sequential (status by status).");
-        }
-
-        if (targetStatus < 1) {
-            throw new Error("Status cannot be less than 1.");
+            throw new ConflictError("Closed tasks are immutable and cannot be modified.");
         }
 
         const strategy = strategyRegistry.get(task.type);
+        const currentStatus = task.status;
 
-        console.log("DEBUG_SERVICE: Strategy receiving:", JSON.stringify(customData));
-
-        if (targetStatus > strategy.maxStatus) {
-            throw new Error(`Status ${targetStatus} exceeds the maximum allowed status for this task type.`);
+        if (targetStatus < 1) {
+            throw new ValidationError("Status cannot be less than 1.");
         }
 
-        const updatedCustomData = { ...task.customData, ...customData };
+        if (targetStatus > strategy.maxStatus) {
+            throw new ValidationError(
+                `Status ${targetStatus} exceeds the maximum status (${strategy.maxStatus}) for this task type.`
+            );
+        }
+
+        if (targetStatus === currentStatus) {
+            throw new ValidationError("Task is already at the requested status.");
+        }
+
+        const isForward = targetStatus > currentStatus;
+        if (isForward && targetStatus !== currentStatus + 1) {
+            throw new ValidationError("Forward transitions must be sequential (one status at a time).");
+        }
+
+        // Merge and validate. Backward moves are always allowed (no data required).
+        const updatedCustomData = { ...task.customData, ...(customData ?? {}) };
         if (isForward) {
-            console.log("DEBUG: Data passed to Strategy:", JSON.stringify(customData, null, 2));
             strategy.validateStatusTransition(targetStatus, updatedCustomData);
         }
 
         const nextUser = await this.userRepository.findOneBy({ id: nextAssignedUserId });
         if (!nextUser) {
-            throw new Error("Next assigned user must be a valid user.");
+            throw new NotFoundError("Next assigned user must be a valid user.");
         }
 
         task.status = targetStatus;
         task.customData = updatedCustomData;
         task.assignedUser = nextUser;
 
-        return await this.taskRepository.save(task);
+        return this.taskRepository.save(task);
     }
 
     async closeTask(taskId: number): Promise<Task> {
         const task = await this.taskRepository.findOne({ where: { id: taskId } });
 
         if (!task) {
-            throw new NotFoundError("Task not found");
+            throw new NotFoundError("Task not found.");
         }
 
         if (task.isClosed) {
-            throw new BadRequestError("Cannot modify a closed task.");
+            throw new ConflictError("Task is already closed.");
         }
 
         const strategy = strategyRegistry.get(task.type);
-
         if (task.status !== strategy.maxStatus) {
-            throw new Error(`Task can only be closed from its final status (${strategy.maxStatus}).`);
+            throw new ConflictError(
+                `A task can only be closed from its final status (${strategy.maxStatus}).`
+            );
         }
 
         task.isClosed = true;
-        return await this.taskRepository.save(task);
+        return this.taskRepository.save(task);
     }
 }

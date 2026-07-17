@@ -4,12 +4,9 @@ import { UserService } from "../services/user.service";
 const userService = new UserService();
 
 export class UserController {
-    async getAllUsers(req: Request, res: Response): Promise<void> {
-        try {
-            const users = await userService.getAllUsers();
-            res.json(users);
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
-        }
+    /** GET /api/users */
+    async getAllUsers(_req: Request, res: Response): Promise<void> {
+        const users = await userService.getAllUsers();
+        res.json(users);
     }
 }

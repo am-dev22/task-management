@@ -18,8 +18,10 @@ export class Task {
     @Column("boolean", { default: false })
     isClosed!: boolean;
 
-    // Store all type-specific fields here (e.g. { specification: "..." })
-    @Column("simple-json", { nullable: true })
+    // Store all type-specific fields here (e.g. { specification: "..." }).
+    // jsonb lets PostgreSQL store and query the payload natively and round-trips
+    // numbers/arrays without the coercion issues of a stringified text column.
+    @Column("jsonb", { default: {} })
     customData!: Record<string, any>;
 
     @ManyToOne(() => User, (user) => user.tasks, { eager: true })

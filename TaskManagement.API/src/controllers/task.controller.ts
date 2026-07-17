@@ -1,113 +1,72 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { TaskService } from "../services/task.service";
+import { strategyRegistry } from "../strategies/StrategyRegistry";
+import { ValidationError } from "../errors";
 
 const taskService = new TaskService();
 
+/** Parses a route param as a positive integer id, or throws a 400. */
+function parseId(raw: string | undefined, label: string): number {
+    const id = Number(raw);
+    if (!Number.isInteger(id) || id < 1) {
+        throw new ValidationError(`Invalid ${label}.`);
+    }
+    return id;
+}
+
 export class TaskController {
-    async getUserTasks(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            // Narrow the type to ensure we have a single string
-            const userIdParam = req.params.userId;
-            const userIdString = Array.isArray(userIdParam) ? userIdParam[0] : userIdParam;
-
-            const userId = parseInt(userIdString, 10);
-
-            if (isNaN(userId) || userId <= 0) {
-                res.status(400).json({ error: "Invalid user ID." });
-                return;
-            }
-
-            res.json(await taskService.getTasksByUserId(userId));
-        } catch (error) {
-            next(error);
-        }
+    /** GET /api/tasks/types — declarative metadata that drives the client's forms. */
+    async getTaskTypes(_req: Request, res: Response): Promise<void> {
+        const types = strategyRegistry.list().map((strategy) => ({
+            type: strategy.taskType,
+            label: strategy.label,
+            maxStatus: strategy.maxStatus,
+            statuses: strategy.statuses,
+        }));
+        res.json(types);
     }
 
-    async createTask(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const { title, type, assignedUserId } = req.body;
-            const parsedAssignedUserId = parseInt(assignedUserId, 10);
-
-            const newTask = await taskService.createTask(
-                title,
-                type.toLowerCase(),
-                parsedAssignedUserId
-            );
-            res.status(201).json(newTask);
-        } catch (error) {
-            next(error);
-        }
+    /** GET /api/users/:userId/tasks */
+    async getUserTasks(req: Request, res: Response): Promise<void> {
+        const userId = parseId(req.params.userId, "user ID");
+        const tasks = await taskService.getTasksByUserId(userId);
+        res.json(tasks);
     }
 
-    // This updated method handles data transformation based on type and status
-    async updateStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const idParam = req.params.id;
-            const idString = Array.isArray(idParam) ? idParam[0] : idParam;
-            const taskId = parseInt(idString, 10);
+    /** POST /api/tasks */
+    async createTask(req: Request, res: Response): Promise<void> {
+        const { title, type, assignedUserId } = req.body ?? {};
 
-            const { targetStatus, customData, nextAssignedUserId, taskType } = req.body;
-
-            const parsedTargetStatus = parseInt(targetStatus, 10);
-            if (isNaN(parsedTargetStatus)) {
-                res.status(400).json({ error: "Invalid targetStatus." });
-                return;
-            }
-
-            let finalData: any = customData || {};
-
-            // Inside updateStatus in TaskController.ts
-            // Replace your procurement block in TaskController.ts with this:
-            if (taskType === "procurement" && parsedTargetStatus === 2) {
-                const raw = customData?.inputField || customData?.priceQuotes || "";
-
-                // Split and convert each element to a STRING explicitly
-                const quotesArray = (typeof raw === 'string' ? raw.split(",") : Array.isArray(raw) ? raw : [])
-                    .map((s: any) => String(s).trim()) // This line forces the conversion to string
-                    .filter((s: string) => s.length > 0);
-
-                finalData = {
-                    priceQuotes: quotesArray
-                };
-
-                console.log("DEBUG: Final object structure being sent to Service:", JSON.stringify(finalData));
-            }
-            else if (taskType === "development") {
-                const input = customData?.inputField || customData?.specification || customData?.branch || "";
-                const val = Array.isArray(input) ? input[0] : input;
-
-                if (parsedTargetStatus === 2) {
-                    finalData = { specification: String(val) };
-                } else if (parsedTargetStatus === 3) {
-                    finalData = { branch: String(val) };
-                }
-            }
-
-            const parsedNextAssignedUserId = nextAssignedUserId ? parseInt(nextAssignedUserId, 10) : 0;
-
-            console.log("DEBUG: Final object structure being sent to Service:", JSON.stringify(finalData));
-
-            const updatedTask = await taskService.updateTaskStatus(
-                taskId,
-                parsedTargetStatus,
-                finalData,
-                parsedNextAssignedUserId
-            );
-
-            res.json(updatedTask);
-        } catch (error) {
-            console.error("Task Update Error:", error);
-            next(error);
+        if (!title || !type || assignedUserId === undefined || assignedUserId === null) {
+            throw new ValidationError("Missing required fields: title, type, assignedUserId.");
         }
+
+        const newTask = await taskService.createTask(title, type, Number(assignedUserId));
+        res.status(201).json(newTask);
     }
 
-    async closeTask(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            const idParam = req.params.id;
-            const taskId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
-            res.json(await taskService.closeTask(taskId));
-        } catch (error) {
-            next(error);
+    /** PUT /api/tasks/:id/status */
+    async updateStatus(req: Request, res: Response): Promise<void> {
+        const taskId = parseId(req.params.id, "task ID");
+        const { targetStatus, customData, nextAssignedUserId } = req.body ?? {};
+
+        if (nextAssignedUserId === undefined || nextAssignedUserId === null) {
+            throw new ValidationError("nextAssignedUserId is required for every status change.");
         }
+
+        const updatedTask = await taskService.updateTaskStatus(
+            taskId,
+            Number(targetStatus),
+            customData ?? {},
+            Number(nextAssignedUserId)
+        );
+        res.json(updatedTask);
+    }
+
+    /** PUT /api/tasks/:id/close */
+    async closeTask(req: Request, res: Response): Promise<void> {
+        const taskId = parseId(req.params.id, "task ID");
+        const closedTask = await taskService.closeTask(taskId);
+        res.json(closedTask);
     }
 }

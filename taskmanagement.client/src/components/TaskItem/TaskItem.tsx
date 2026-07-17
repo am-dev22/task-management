@@ -1,57 +1,108 @@
-﻿import { type User, type Task, type TransitionState, TASK_TYPE_CONFIGS } from "../../types";
+import React, { useMemo, useState } from "react";
+import type { FieldSpec, Task, TaskTypeMeta, User } from "../../types";
 import "./TaskItem.css";
 
 interface TaskItemProps {
     task: Task;
     users: User[];
-    transitionData: TransitionState | undefined;
-    onStatusChange: (task: Task, targetStatus: number, inputVal: string, nextUser: number) => Promise<void>;
+    /** Metadata for this task's type; drives the dynamic transition form. */
+    meta: TaskTypeMeta | undefined;
+    onStatusChange: (
+        task: Task,
+        targetStatus: number,
+        customData: Record<string, unknown>,
+        nextUserId: number
+    ) => Promise<boolean>;
     onCloseTask: (taskId: number) => Promise<void>;
-    onTransitionStateChange: (taskId: number, key: "nextUser" | "inputField", value: string | number) => void;
 }
 
-export function TaskItem({
+/** Composite key so each entry of a string-list field has its own input. */
+const listKey = (field: FieldSpec, index: number) => `${field.key}__${index}`;
+
+export const TaskItem: React.FC<TaskItemProps> = ({
     task,
     users,
-    transitionData,
+    meta,
     onStatusChange,
     onCloseTask,
-    onTransitionStateChange,
-}: TaskItemProps) {
-    const config = TASK_TYPE_CONFIGS[task.type.toLowerCase()];
-
-    // Safety fallback to prevent app crashes if an undefined task type is passed
-    const label = config?.label ?? task.type;
-    const maxStatusForType = config?.maxStatus ?? 4;
-
+}) => {
+    const maxStatus = meta?.maxStatus ?? task.status;
     const nextStatus = task.status + 1;
     const prevStatus = task.status - 1;
 
-    // Dynamically retrieve placeholder configuration for the upcoming status change
-    const activeStepConfig = config?.steps[nextStatus];
-    const inputPlaceholder = activeStepConfig?.placeholder || "";
+    // Fields required to advance to the next status, derived from server metadata.
+    const nextFields = useMemo<FieldSpec[]>(
+        () => meta?.statuses.find((s) => s.status === nextStatus)?.requiredFields ?? [],
+        [meta, nextStatus]
+    );
+
+    const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
+    const [nextUserId, setNextUserId] = useState<number>(task.assignedUser.id);
+
+    const setField = (key: string, value: unknown) =>
+        setFieldValues((prev) => ({ ...prev, [key]: value }));
+
+    // Coerce raw form values into the typed payload the API expects.
+    const buildCustomData = (): Record<string, unknown> => {
+        const data: Record<string, unknown> = {};
+        for (const field of nextFields) {
+            switch (field.type) {
+                case "number": {
+                    const raw = fieldValues[field.key];
+                    const n = Number(raw);
+                    data[field.key] = raw !== undefined && raw !== "" && Number.isFinite(n) ? n : null;
+                    break;
+                }
+                case "boolean": {
+                    data[field.key] = Boolean(fieldValues[field.key]);
+                    break;
+                }
+                case "string-list": {
+                    const count = field.itemCount ?? 1;
+                    data[field.key] = Array.from({ length: count }, (_, i) =>
+                        String(fieldValues[listKey(field, i)] ?? "")
+                    );
+                    break;
+                }
+                default: {
+                    // text | date | select
+                    data[field.key] = String(fieldValues[field.key] ?? "");
+                }
+            }
+        }
+        return data;
+    };
+
+    const handleForward = async () => {
+        const ok = await onStatusChange(task, nextStatus, buildCustomData(), nextUserId);
+        // Only reset the inputs when the transition actually succeeded, so a
+        // failed attempt doesn't wipe what the user typed.
+        if (ok) setFieldValues({});
+    };
+
+    const handleBackward = () => {
+        // Backward moves require no custom data but still reassign the task.
+        void onStatusChange(task, prevStatus, {}, nextUserId);
+    };
 
     const renderCustomData = (customData: Record<string, unknown>) => {
         const keys = Object.keys(customData);
         if (keys.length === 0) {
             return <span className="no-details-text">No details submitted yet.</span>;
         }
-
         return (
             <div className="custom-data-list">
                 {keys.map((key) => {
                     const val = customData[key];
-                    const formattedLabel = key
-                        .replace(/([A-Z])/g, " $1")
-                        .trim()
-                        .replace(/^./, (str) => str.toUpperCase());
-
+                    const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+                    let display: string;
+                    if (Array.isArray(val)) display = val.join(", ");
+                    else if (typeof val === "boolean") display = val ? "Yes" : "No";
+                    else display = String(val);
                     return (
                         <div key={key} className="custom-data-item">
-                            <strong className="custom-data-label">{formattedLabel}:</strong>{" "}
-                            <span className="custom-data-value">
-                                {Array.isArray(val) ? val.join(", ") : String(val)}
-                            </span>
+                            <strong className="custom-data-label">{label}:</strong>{" "}
+                            <span className="custom-data-value">{display}</span>
                         </div>
                     );
                 })}
@@ -59,30 +110,86 @@ export function TaskItem({
         );
     };
 
-    const handleForwardTransition = async () => {
-        const inputVal = transitionData?.inputField || "";
-
-        // If it's procurement, ensure the input follows the strict rule: "quote1,quote2"
-        if (task.type === "procurement" && nextStatus === 2) {
-            const parts = inputVal.split(",").map(p => p.trim());
-            if (parts.length !== 2 || parts.some(p => p === "")) {
-                alert("For procurement, please enter exactly 2 price quotes separated by a comma (e.g., 100,200).");
-                return;
+    const renderField = (field: FieldSpec) => {
+        switch (field.type) {
+            case "number":
+                return (
+                    <input
+                        key={field.key}
+                        type="number"
+                        placeholder={field.label}
+                        value={String(fieldValues[field.key] ?? "")}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        className="transition-input"
+                    />
+                );
+            case "date":
+                return (
+                    <input
+                        key={field.key}
+                        type="date"
+                        aria-label={field.label}
+                        value={String(fieldValues[field.key] ?? "")}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        className="transition-input"
+                    />
+                );
+            case "boolean":
+                return (
+                    <label key={field.key} className="transition-checkbox">
+                        <input
+                            type="checkbox"
+                            checked={Boolean(fieldValues[field.key])}
+                            onChange={(e) => setField(field.key, e.target.checked)}
+                        />{" "}
+                        {field.label}
+                    </label>
+                );
+            case "select":
+                return (
+                    <select
+                        key={field.key}
+                        aria-label={field.label}
+                        value={String(fieldValues[field.key] ?? "")}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        className="transition-select"
+                    >
+                        <option value="">Select {field.label}…</option>
+                        {(field.options ?? []).map((opt) => (
+                            <option key={opt} value={opt}>
+                                {opt}
+                            </option>
+                        ))}
+                    </select>
+                );
+            case "string-list": {
+                const count = field.itemCount ?? 1;
+                return Array.from({ length: count }, (_, i) => {
+                    const key = listKey(field, i);
+                    return (
+                        <input
+                            key={key}
+                            type="text"
+                            placeholder={count > 1 ? `${field.label} (${i + 1})` : field.label}
+                            value={String(fieldValues[key] ?? "")}
+                            onChange={(e) => setField(key, e.target.value)}
+                            className="transition-input"
+                        />
+                    );
+                });
             }
+            default:
+                return (
+                    <input
+                        key={field.key}
+                        type="text"
+                        placeholder={field.label}
+                        value={String(fieldValues[field.key] ?? "")}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        className="transition-input"
+                    />
+                );
         }
-
-        // Pass the raw string to the server. 
-        // Do NOT transform it into an array of numbers, as the strategy expects strings.
-        onStatusChange(task, nextStatus, inputVal, transitionData?.nextUser ?? task.assignedUser.id)
-            .catch(err => console.error("Update failed:", err));
-    };
-
-    const handleBackwardTransition = () => {
-        onStatusChange(task, prevStatus, "", task.assignedUser.id).catch(console.error);
-    };
-
-    const handleCloseTask = () => {
-        onCloseTask(task.id).catch(console.error);
     };
 
     return (
@@ -90,12 +197,14 @@ export function TaskItem({
             <div className="task-item-header">
                 <strong className="task-item-title">{task.title}</strong>
                 <span className={`task-badge ${task.isClosed ? "badge-closed" : "badge-open"}`}>
-                    {label} (Status {task.status}/{maxStatusForType}){task.isClosed && " • CLOSED"}
+                    {meta?.label ?? task.type} (Status {task.status}/{maxStatus}){" "}
+                    {task.isClosed && "• CLOSED"}
                 </span>
             </div>
 
             <p className="task-assignee">
-                <strong>Assigned to:</strong> <span className="assignee-name">{task.assignedUser.name}</span>
+                <strong>Assigned to:</strong>{" "}
+                <span className="assignee-name">{task.assignedUser.name}</span>
             </p>
 
             <div className="task-details-box">
@@ -106,32 +215,19 @@ export function TaskItem({
             {!task.isClosed && (
                 <div className="task-actions-section">
                     <div className="actions-flex-container">
-                        {/* Backward Transition */}
                         {prevStatus >= 1 && (
-                            <button
-                                onClick={handleBackwardTransition}
-                                className="back-transition-button"
-                            >
+                            <button onClick={handleBackward} className="back-transition-button">
                                 ← Back to Status {prevStatus}
                             </button>
                         )}
 
-                        {/* Forward Transition */}
-                        {task.status < maxStatusForType && (
+                        {task.status < maxStatus && (
                             <div className="forward-transition-form">
-                                {inputPlaceholder && (
-                                    <input
-                                        type="text"
-                                        placeholder={inputPlaceholder}
-                                        value={transitionData?.inputField || ""}
-                                        onChange={(e) => onTransitionStateChange(task.id, "inputField", e.target.value)}
-                                        className="transition-input"
-                                    />
-                                )}
+                                {nextFields.map((field) => renderField(field))}
 
                                 <select
-                                    value={transitionData?.nextUser ?? task.assignedUser.id}
-                                    onChange={(e) => onTransitionStateChange(task.id, "nextUser", Number(e.target.value))}
+                                    value={nextUserId}
+                                    onChange={(e) => setNextUserId(Number(e.target.value))}
                                     className="transition-select"
                                 >
                                     {users.map((u) => (
@@ -141,16 +237,15 @@ export function TaskItem({
                                     ))}
                                 </select>
 
-                                <button onClick={handleForwardTransition} className="forward-button">
+                                <button onClick={() => void handleForward()} className="forward-button">
                                     Forward to {nextStatus} →
                                 </button>
                             </div>
                         )}
 
-                        {/* Close Task Trigger */}
-                        {task.status === maxStatusForType && (
+                        {task.status === maxStatus && (
                             <button
-                                onClick={handleCloseTask}
+                                onClick={() => void onCloseTask(task.id)}
                                 className="close-task-button"
                             >
                                 🔒 Close Task
@@ -161,4 +256,4 @@ export function TaskItem({
             )}
         </div>
     );
-}
+};

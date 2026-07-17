@@ -1,61 +1,39 @@
-import axios  from "axios";
-import type { User, Task } from "../types";
+import axios from "axios";
+import type { Task, TaskTypeMeta, User } from "../types";
 
-const API_BASE_URL = "/api"; // Adjust to match your backend port
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 
-export interface ApiErrorDetail {
-    message: string;
-    statusCode?: number;
-}
+const client = axios.create({ baseURL: API_BASE });
 
-export function parseApiError(err: unknown): ApiErrorDetail {
+/** Extracts the server's error message from an Axios error, with a fallback. */
+export function getErrorMessage(err: unknown, fallback: string): string {
     if (axios.isAxiosError(err)) {
-        const serverMessage = err.response?.data?.error || err.response?.data?.message;
-        return {
-            message: serverMessage || err.message || "An unexpected network error occurred.",
-            statusCode: err.response?.status
-        };
+        return err.response?.data?.error ?? fallback;
     }
-    return {
-        message: err instanceof Error ? err.message : "An unknown error occurred."
-    };
+    return fallback;
 }
 
 export const api = {
-    async getUsers(): Promise<User[]> {
-        const res = await axios.get<User[]>(`${API_BASE_URL}/users`);
-        return res.data;
-    },
+    getUsers: () => client.get<User[]>("/users").then((r) => r.data),
 
-    async getTasks(userId: number): Promise<Task[]> {
-        const res = await axios.get<Task[]>(`${API_BASE_URL}/tasks/user/${userId}`);
-        return res.data;
-    },
+    getTaskTypes: () => client.get<TaskTypeMeta[]>("/tasks/types").then((r) => r.data),
 
-    async createTask(title: string, type: string, creatorId: number): Promise<Task> {
-        const res = await axios.post<Task>(`${API_BASE_URL}/tasks`, {
-            title,
-            type,
-            creatorId
-        });
-        return res.data;
-    },
+    getUserTasks: (userId: number) =>
+        client.get<Task[]>(`/users/${userId}/tasks`).then((r) => r.data),
 
-    async updateTaskStatus(
+    createTask: (title: string, type: string, assignedUserId: number) =>
+        client.post<Task>("/tasks", { title, type, assignedUserId }).then((r) => r.data),
+
+    updateStatus: (
         taskId: number,
         targetStatus: number,
-        nextAssignedUserId: number,
-        customData: Record<string, unknown>
-    ): Promise<Task> {
-        const res = await axios.put<Task>(`${API_BASE_URL}/tasks/${taskId}/status`, {
-            targetStatus,
-            nextAssignedUserId,
-            customData
-        });
-        return res.data;
-    },
+        customData: Record<string, unknown>,
+        nextAssignedUserId: number
+    ) =>
+        client
+            .put<Task>(`/tasks/${taskId}/status`, { targetStatus, customData, nextAssignedUserId })
+            .then((r) => r.data),
 
-    async closeTask(taskId: number): Promise<void> {
-        await axios.post(`${API_BASE_URL}/tasks/${taskId}/close`);
-    }
+    closeTask: (taskId: number) =>
+        client.put<Task>(`/tasks/${taskId}/close`).then((r) => r.data),
 };

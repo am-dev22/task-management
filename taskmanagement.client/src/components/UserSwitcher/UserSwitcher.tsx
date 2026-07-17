@@ -5,27 +5,18 @@ import "./UserSwitcher.css";
 interface UserSwitcherProps {
     users: User[];
     currentUser: User | null;
-    onUserChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onUserChange: (userId: number) => void;
 }
 
-export function UserSwitcher({
-    users,
-    currentUser,
-    onUserChange,
-}: UserSwitcherProps) {
+export const UserSwitcher: React.FC<UserSwitcherProps> = ({ users, currentUser, onUserChange }) => {
     return (
         <section className="user-switcher-container">
             <h3 className="user-switcher-title">1. Active User (Who you are logged in as)</h3>
             <select
                 className="user-switcher-select"
-                value={currentUser?.id || ""}
-                onChange={onUserChange}
+                value={currentUser?.id ?? ""}
+                onChange={(e) => onUserChange(Number(e.target.value))}
             >
-                {currentUser === null && (
-                    <option value="" disabled>
-                        -- Select an Active Identity --
-                    </option>
-                )}
                 {users.map((u) => (
                     <option key={u.id} value={u.id}>
                         {u.name}
@@ -34,4 +25,4 @@ export function UserSwitcher({
             </select>
         </section>
     );
-}
+};

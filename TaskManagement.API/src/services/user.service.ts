@@ -2,9 +2,11 @@ import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 
 export class UserService {
-    private userRepository = AppDataSource.getRepository(User);
+    private get userRepository() {
+        return AppDataSource.getRepository(User);
+    }
 
     async getAllUsers(): Promise<User[]> {
-        return await this.userRepository.find();
+        return this.userRepository.find({ order: { id: "ASC" } });
     }
 }

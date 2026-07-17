@@ -1,25 +1,77 @@
 import { AppDataSource } from "../data-source";
+import { Task } from "../entities/Task";
 import { User } from "../entities/User";
 
-export async function initializeDatabase(): Promise<void> {
-    try {
-        await AppDataSource.initialize();
-        console.log("Database successfully connected!");
+const RETRY_ATTEMPTS = 10;
+const RETRY_DELAY_MS = 2000;
 
-        const userRepository = AppDataSource.getRepository(User);
-        const count = await userRepository.count();
-        if (count === 0) {
-            console.log("Seeding initial users...");
-            const usersToSeed = [
-                { name: "Alice Backend Developer" },
-                { name: "Bob Product Owner" },
-                { name: "Charlie Procurement Manager" }
-            ];
-            await userRepository.save(userRepository.create(usersToSeed));
-            console.log("Users seeded successfully!");
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Initialises the data source and seeds demo data on first run.
+ *
+ * Connection is retried because, under Docker Compose, the API container can
+ * start before PostgreSQL is ready to accept connections.
+ */
+export async function initializeDatabase(): Promise<void> {
+    await connectWithRetry();
+    console.log("Database successfully connected!");
+    await seedData();
+}
+
+async function connectWithRetry(): Promise<void> {
+    for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+        try {
+            await AppDataSource.initialize();
+            return;
+        } catch (error) {
+            if (attempt === RETRY_ATTEMPTS) {
+                console.error("Database connection failed after all retries.");
+                throw error;
+            }
+            console.log(
+                `Database not ready (attempt ${attempt}/${RETRY_ATTEMPTS}); retrying in ${RETRY_DELAY_MS}ms...`
+            );
+            await delay(RETRY_DELAY_MS);
         }
-    } catch (error) {
-        console.error("Database connection error: ", error);
-        throw error;
     }
+}
+
+async function seedData(): Promise<void> {
+    const userRepository = AppDataSource.getRepository(User);
+    if ((await userRepository.count()) > 0) {
+        return;
+    }
+
+    console.log("Seeding demo users and tasks...");
+    const users = await userRepository.save(
+        userRepository.create([
+            { name: "Alice (Backend Developer)" },
+            { name: "Bob (Product Owner)" },
+            { name: "Charlie (Procurement Manager)" },
+        ])
+    );
+
+    const taskRepository = AppDataSource.getRepository(Task);
+    await taskRepository.save(
+        taskRepository.create([
+            {
+                title: "Order new office laptops",
+                type: "procurement",
+                status: 1,
+                isClosed: false,
+                customData: {},
+                assignedUser: users[2],
+            },
+            {
+                title: "Build task-management API",
+                type: "development",
+                status: 1,
+                isClosed: false,
+                customData: {},
+                assignedUser: users[0],
+            },
+        ])
+    );
+    console.log("Seed data created successfully!");
 }
