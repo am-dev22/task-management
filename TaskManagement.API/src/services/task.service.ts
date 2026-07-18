@@ -5,8 +5,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../errors";
 import { strategyRegistry } from "../strategies/StrategyRegistry";
 
 export class TaskService {
-    // Resolved lazily so the repositories are only requested after the data
-    // source has been initialised.
+
     private get taskRepository() {
         return AppDataSource.getRepository(Task);
     }
@@ -23,7 +22,7 @@ export class TaskService {
     }
 
     async createTask(title: string, type: string, assignedUserId: number): Promise<Task> {
-        // Throws ValidationError if no strategy is registered for this type.
+
         strategyRegistry.get(type);
 
         const user = await this.userRepository.findOneBy({ id: assignedUserId });

@@ -1,21 +1,11 @@
 import { ValidationError } from "../errors";
 import { FieldSpec, ITaskStrategy, StatusDefinition } from "./ITaskStrategy";
 
-/**
- * Generic strategy behaviour shared by every task type. Concrete strategies only
- * declare their `taskType` and `statuses`; status names, the maximum status, and
- * per-transition validation are all derived from that single declaration.
- *
- * Validation is driven entirely by each field's declared `type`, so adding a new
- * task type — whatever mix of text/number/date/boolean/select/list fields it
- * uses — means creating one subclass and registering it. No existing code
- * changes.
- */
+
 export abstract class BaseTaskStrategy implements ITaskStrategy {
     abstract readonly taskType: string;
     abstract readonly statuses: StatusDefinition[];
 
-    /** Defaults to the capitalised task type; override for acronyms like "HR". */
     get label(): string {
         return this.taskType.charAt(0).toUpperCase() + this.taskType.slice(1);
     }
@@ -61,7 +51,7 @@ export abstract class BaseTaskStrategy implements ITaskStrategy {
                 return;
             }
             case "date": {
-                // Expect an ISO date (YYYY-MM-DD) that parses to a real calendar day.
+                // Expect an ISO date (YYYY-MM-DD) 
                 if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value))) {
                     fail(`${field.label} to be a valid date (YYYY-MM-DD)`);
                 }

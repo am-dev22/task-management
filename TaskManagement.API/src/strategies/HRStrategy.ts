@@ -1,11 +1,6 @@
 import { BaseTaskStrategy } from "./BaseTaskStrategy";
 import { StatusDefinition } from "./ITaskStrategy";
 
-/**
- * A recruitment/HR task. Demonstrates that a task type using non-string field
- * shapes (number, select, date, boolean) requires no changes to shared code —
- * only this file plus one registration line.
- */
 export class HRStrategy extends BaseTaskStrategy {
     readonly taskType = "hr";
 

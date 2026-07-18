@@ -8,7 +8,6 @@ class StrategyRegistry {
     private strategies = new Map<string, ITaskStrategy>();
 
     constructor() {
-        // Register the built-in strategies. Adding a task type is a single line here.
         this.register(new ProcurementStrategy());
         this.register(new DevelopmentStrategy());
         this.register(new HRStrategy());
@@ -26,7 +25,6 @@ class StrategyRegistry {
         return strategy;
     }
 
-    /** All registered strategies — used to expose task-type metadata to clients. */
     public list(): ITaskStrategy[] {
         return [...this.strategies.values()];
     }
