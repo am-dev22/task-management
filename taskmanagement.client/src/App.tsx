@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskTypeMeta, User } from "./types";
-import { api, getErrorMessage } from "./services/api";
+import { userService } from "./services/userService";
+import { taskService } from "./services/taskService";
+import { getErrorMessage } from "./services/api";
 import { UserSwitcher } from "./components/UserSwitcher/UserSwitcher";
 import { CreateTaskForm } from "./components/CreateTaskForm/CreateTaskForm";
 import { TaskItem } from "./components/TaskItem/TaskItem";
@@ -16,7 +18,7 @@ export default function App() {
 
     const loadTasks = useCallback(async (userId: number) => {
         try {
-            setTasks(await api.getUserTasks(userId));
+            setTasks(await taskService.getUserTasks(userId));
         } catch (err) {
             setError(getErrorMessage(err, "Failed to load tasks."));
         }
@@ -24,12 +26,11 @@ export default function App() {
 
     useEffect(() => {
         let cancelled = false;
-
         (async () => {
             try {
                 const [fetchedUsers, fetchedTypes] = await Promise.all([
-                    api.getUsers(),
-                    api.getTaskTypes(),
+                    userService.getAllUsers(),
+                    taskService.getTaskTypes(),
                 ]);
                 if (cancelled) return;
 
@@ -45,10 +46,7 @@ export default function App() {
                 if (!cancelled) setLoading(false);
             }
         })();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [loadTasks]);
 
     const handleUserChange = (userId: number) => {
@@ -62,7 +60,7 @@ export default function App() {
     const handleCreateTask = async (title: string, type: string, assigneeId: number) => {
         setError(null);
         try {
-            await api.createTask(title, type, assigneeId);
+            await taskService.createTask(title, type, assigneeId);
             if (currentUser) await loadTasks(currentUser.id);
         } catch (err) {
             setError(getErrorMessage(err, "Failed to create task."));
@@ -77,7 +75,7 @@ export default function App() {
     ): Promise<boolean> => {
         setError(null);
         try {
-            await api.updateStatus(task.id, targetStatus, customData, nextUserId);
+            await taskService.updateStatus(task.id, targetStatus, customData, nextUserId);
             if (currentUser) await loadTasks(currentUser.id);
             return true;
         } catch (err) {
@@ -89,7 +87,7 @@ export default function App() {
     const handleCloseTask = async (taskId: number) => {
         setError(null);
         try {
-            await api.closeTask(taskId);
+            await taskService.closeTask(taskId);
             if (currentUser) await loadTasks(currentUser.id);
         } catch (err) {
             setError(getErrorMessage(err, "Failed to close task."));

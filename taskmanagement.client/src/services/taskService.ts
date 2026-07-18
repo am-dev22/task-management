@@ -1,37 +1,38 @@
-import { apiClient } from "./apiClient";
-import type { Task } from "../types";
+import { client } from "./api";
+import type { Task, TaskTypeMeta } from "../types";
 
 export const taskService = {
-    async getTasksByUserId(userId: number): Promise<Task[]> {
-        const response = await apiClient.get<Task[]>(`/tasks/user/${userId}`);
-        return response.data;
+    async getTaskTypes(): Promise<TaskTypeMeta[]> {
+        const { data } = await client.get<TaskTypeMeta[]>("/tasks/types");
+        return data;
+    },
+
+    async getUserTasks(userId: number): Promise<Task[]> {
+        const { data } = await client.get<Task[]>(`/users/${userId}/tasks`);
+        return data;
     },
 
     async createTask(title: string, type: string, assignedUserId: number): Promise<Task> {
-        const response = await apiClient.post<Task>("/tasks", {
-            title,
-            type,
-            assignedUserId,
-        });
-        return response.data;
+        const { data } = await client.post<Task>("/tasks", { title, type, assignedUserId });
+        return data;
     },
 
-    async updateTaskStatus(
+    async updateStatus(
         taskId: number,
         targetStatus: number,
-        nextAssignedUserId: number,
-        customData: Record<string, unknown>
+        customData: Record<string, unknown>,
+        nextAssignedUserId: number
     ): Promise<Task> {
-        const response = await apiClient.put<Task>(`/tasks/${taskId}/status`, {
+        const { data } = await client.put<Task>(`/tasks/${taskId}/status`, {
             targetStatus,
-            nextAssignedUserId,
             customData,
+            nextAssignedUserId
         });
-        return response.data;
+        return data;
     },
 
     async closeTask(taskId: number): Promise<Task> {
-        const response = await apiClient.put<Task>(`/tasks/${taskId}/close`);
-        return response.data;
+        const { data } = await client.put<Task>(`/tasks/${taskId}/close`);
+        return data;
     }
 };
