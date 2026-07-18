@@ -13,10 +13,8 @@ export interface Task {
     assignedUser: User;
 }
 
-/** Supported field shapes. Mirrors the server's FieldType union. */
 export type FieldType = "text" | "number" | "date" | "boolean" | "select" | "string-list";
 
-/** A field the API requires to enter a given status. Mirrors the server schema. */
 export interface FieldSpec {
     key: string;
     label: string;
@@ -32,7 +30,6 @@ export interface StatusDefinition {
     requiredFields: FieldSpec[];
 }
 
-/** Task-type metadata served by GET /api/tasks/types. Drives all dynamic UI. */
 export interface TaskTypeMeta {
     type: string;
     label: string;

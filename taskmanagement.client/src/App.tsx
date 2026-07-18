@@ -22,7 +22,6 @@ export default function App() {
         }
     }, []);
 
-    // Load reference data (users + task-type metadata) once on mount.
     useEffect(() => {
         let cancelled = false;
 

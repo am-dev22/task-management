@@ -5,7 +5,6 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 
 const client = axios.create({ baseURL: API_BASE });
 
-/** Extracts the server's error message from an Axios error, with a fallback. */
 export function getErrorMessage(err: unknown, fallback: string): string {
     if (axios.isAxiosError(err)) {
         return err.response?.data?.error ?? fallback;

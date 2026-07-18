@@ -19,7 +19,6 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     const [type, setType] = useState("");
     const [assigneeId, setAssigneeId] = useState<number | "">("");
 
-    // Default the type selection to the first available task type.
     useEffect(() => {
         if (!type && taskTypes.length > 0) {
             setType(taskTypes[0].type);

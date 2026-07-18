@@ -5,7 +5,6 @@ import "./TaskItem.css";
 interface TaskItemProps {
     task: Task;
     users: User[];
-    /** Metadata for this task's type; drives the dynamic transition form. */
     meta: TaskTypeMeta | undefined;
     onStatusChange: (
         task: Task,
@@ -16,7 +15,6 @@ interface TaskItemProps {
     onCloseTask: (taskId: number) => Promise<void>;
 }
 
-/** Composite key so each entry of a string-list field has its own input. */
 const listKey = (field: FieldSpec, index: number) => `${field.key}__${index}`;
 
 export const TaskItem: React.FC<TaskItemProps> = ({
@@ -30,7 +28,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     const nextStatus = task.status + 1;
     const prevStatus = task.status - 1;
 
-    // Fields required to advance to the next status, derived from server metadata.
     const nextFields = useMemo<FieldSpec[]>(
         () => meta?.statuses.find((s) => s.status === nextStatus)?.requiredFields ?? [],
         [meta, nextStatus]
@@ -42,7 +39,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     const setField = (key: string, value: unknown) =>
         setFieldValues((prev) => ({ ...prev, [key]: value }));
 
-    // Coerce raw form values into the typed payload the API expects.
     const buildCustomData = (): Record<string, unknown> => {
         const data: Record<string, unknown> = {};
         for (const field of nextFields) {
@@ -75,13 +71,10 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
     const handleForward = async () => {
         const ok = await onStatusChange(task, nextStatus, buildCustomData(), nextUserId);
-        // Only reset the inputs when the transition actually succeeded, so a
-        // failed attempt doesn't wipe what the user typed.
         if (ok) setFieldValues({});
     };
 
     const handleBackward = () => {
-        // Backward moves require no custom data but still reassign the task.
         void onStatusChange(task, prevStatus, {}, nextUserId);
     };
 

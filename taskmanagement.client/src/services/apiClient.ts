@@ -7,7 +7,6 @@ export const apiClient = axios.create({
     },
 });
 
-// A utility helper to extract semantic error messages from Axios responses
 export const handleApiError = (error: unknown): string => {
     if (axios.isAxiosError(error)) {
         const backendMessage = error.response?.data?.error || error.response?.data?.message;
