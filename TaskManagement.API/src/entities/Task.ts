@@ -9,18 +9,15 @@ export class Task {
     @Column("varchar")
     title!: string;
 
-    @Column("varchar") // e.g., 'procurement' or 'development'
+    @Column("varchar") 
     type!: string;
 
     @Column("integer", { default: 1 })
-    status!: number; // Represents ascending statuses (1, 2, 3...)
+    status!: number; 
 
     @Column("boolean", { default: false })
     isClosed!: boolean;
 
-    // Store all type-specific fields here (e.g. { specification: "..." }).
-    // jsonb lets PostgreSQL store and query the payload natively and round-trips
-    // numbers/arrays without the coercion issues of a stringified text column.
     @Column("jsonb", { default: {} })
     customData!: Record<string, any>;
 

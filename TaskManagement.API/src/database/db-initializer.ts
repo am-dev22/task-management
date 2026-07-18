@@ -7,12 +7,6 @@ const RETRY_DELAY_MS = 2000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Initialises the data source and seeds demo data on first run.
- *
- * Connection is retried because, under Docker Compose, the API container can
- * start before PostgreSQL is ready to accept connections.
- */
 export async function initializeDatabase(): Promise<void> {
     await connectWithRetry();
     console.log("Database successfully connected!");
